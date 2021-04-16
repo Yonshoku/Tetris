@@ -1,7 +1,7 @@
-// TODO: fix before lock delay
 // fix game over
 // getFullLines()
 // deleteFullLine()
+// delete used curTetromino
 // change background
 // make scoring
 // make score and next tetromino layout elements
@@ -21,7 +21,16 @@ public class Tetris {
 
     private Timer fallTimer = new Timer();
     private long fallPeriod = 500L;
-    private long beforeLockDelay = 500L;
+
+    private TimerTask lockTimerTask; 
+    private long lockDelay = 500L;
+    private boolean lockStarted = false;
+
+    private Timer maxLockXDurationTimer = new Timer();
+    private Timer maxLockYDurationTimer = new Timer();
+    private long maxLockXDuration = 500L;
+    private long maxLockYDuration = 5000L;
+    private int lockX, lockY;
 
     private TetrominoFactory tetrominoFactory;
     private Tetromino curTetromino;
@@ -40,11 +49,6 @@ public class Tetris {
         // Clear previous fall
         fallTimer.cancel();
         fallTimer.purge();
-
-        if (isGameOver()) {
-            gameOver();
-            return;
-        }
 
         // Do new fall
         newTetromino();
@@ -146,30 +150,68 @@ public class Tetris {
 
         } else if (dir == Direction.RIGHT) {
             curTetromino.setX(curTetromino.getX() + 1);
-
         }
+
+    }
+
+    void processMove(Direction dir) {
+        if (dir == Direction.DOWN) { 
+            if (intersectsWithBottom() || intersectsWithLockedTetromino()) {
+                move(Direction.UP);
+            // Tetromino moved down, continue fall
+            } else if (lockStarted) {
+                stopLock();
+            }
+
+            // Start lock if something underneath
+            move(Direction.DOWN);
+            if ((intersectsWithBottom() || intersectsWithLockedTetromino()) && !lockStarted) {
+                startLock();
+                lockStarted = true;
+            }
+            move(Direction.UP);
+
+        } else if (dir == Direction.LEFT) {
+            if (intersectsWithWalls() || intersectsWithLockedTetromino()) {
+                move(Direction.RIGHT);
+            } else if (lockStarted) {
+                stopLock();
+                startLock();
+                lockStarted = true;
+            }
+        } else if (dir == Direction.RIGHT) {
+            if (intersectsWithWalls() || intersectsWithLockedTetromino()) {
+                move(Direction.LEFT);
+            } else if (lockStarted) {
+                stopLock();
+                startLock();
+                lockStarted = true;
+            }
+        }
+
 
         field.repaint();
     }
 
-    void processMove(Direction dir) {
-        // Move back if tetromino intersects with something
-        if (dir == Direction.DOWN && (intersectsWithBottom() || intersectsWithLockedTetromino())) { 
-            move(Direction.UP);
+    void startLock() {
+        stopLock();
 
-            // Make a delay before lock
-            fallTimer.schedule(new TimerTask() {
-                public void run() {
-                    lock();
-                    newFall();
-                }
-            }, beforeLockDelay);
+        lockTimerTask = new TimerTask() {
+            public void run() {
+                lock();
+                newFall();
+                lockStarted = false;
+            }
+        };
+        
+        fallTimer.schedule(lockTimerTask, lockDelay);
+    }
 
-        } else if (dir == Direction.LEFT && (intersectsWithWalls() || intersectsWithLockedTetromino())) {
-            move(Direction.RIGHT);
-        } else if (dir == Direction.RIGHT && (intersectsWithWalls() || intersectsWithLockedTetromino())) {
-            move(Direction.LEFT);
-        }
+    void stopLock() {
+        if (lockTimerTask != null)
+            lockTimerTask.cancel();
+
+        lockStarted = false;
     }
 
     void rotate(Direction dir) {
@@ -189,6 +231,49 @@ public class Tetris {
                 curTetromino.rotate(Direction.CLOCKWISE);
             }
         }
+    }
+
+    int[] getFullLinesNums() {
+        int fullLinesNum = 0;
+        boolean full;
+
+        // Count full lines
+        for (int i = 0; i < colorsOfLocked.length; i++) {
+            full = true;
+
+            for (int j = 0; j < colorsOfLocked[i].length; j++) {
+                if(colorsOfLocked[i][j] == null) {
+                    full = false;
+                    continue;
+                }
+            }
+
+            if (full) {
+                fullLinesNum++;
+            }
+        } 
+
+        System.out.println("num is: " + fullLinesNum);
+
+        int[] fullLinesNums = new int[fullLinesNum];
+        int num = 0;
+        for (int i = 0; i < colorsOfLocked.length; i++) {
+            full = true;
+
+            for (int j = 0; j < colorsOfLocked[i].length; j++) {
+                if (colorsOfLocked[i][j] == null) {
+                    full = false;
+                    continue;
+                }
+            }
+
+            if (full) {
+                fullLinesNums[num] = i;
+                num++;
+            }
+        }
+
+        return fullLinesNums;
     }
 
     boolean isGameOver() {
