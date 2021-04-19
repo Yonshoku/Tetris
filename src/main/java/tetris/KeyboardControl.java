@@ -9,8 +9,8 @@ import java.awt.event.*;
 public class KeyboardControl implements KeyListener{
     private Tetris tetris;
 
-    private long beforeAutoshiftDelay = 135L;
-    private long autoshiftPeriod = 70L;
+    private long beforeAutoshiftDelay = 1000L;
+    private long autoshiftPeriod = 200L;
     private Timer leftAutoshiftTimer, downAutoshiftTimer, rightAutoshiftTimer;
     private String leftAutoshiftTimerState = "stopped";
     private String rightAutoshiftTimerState = "stopped";

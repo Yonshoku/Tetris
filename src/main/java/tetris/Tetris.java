@@ -50,18 +50,28 @@ public class Tetris {
         fallTimer.cancel();
         fallTimer.purge();
 
-        // Do new fall
+        // New fall
         newTetromino();
-
-        TimerTask fall = new TimerTask() {
+        fallTimer = new Timer();
+        fallTimer.scheduleAtFixedRate(new TimerTask() {
             public void run() {
                 move(Direction.DOWN);
                 processMove(Direction.DOWN);
             }
-        };
+        }, 0, fallPeriod);
+    }
+
+    void restartFallTick() {
+        fallTimer.cancel();
+        fallTimer.purge();
 
         fallTimer = new Timer();
-        fallTimer.scheduleAtFixedRate(fall, 0, fallPeriod);
+        fallTimer.scheduleAtFixedRate(new TimerTask() {
+            public void run() {
+                move(Direction.DOWN);
+                processMove(Direction.DOWN);
+            }
+        }, 0, fallPeriod);
     }
 
     boolean intersectsWithWalls() {
