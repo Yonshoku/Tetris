@@ -37,7 +37,8 @@ public class TetrominoFactory {
             bag = createBag();
         } 
 
-        return bag.remove(new Random().nextInt(bag.size()));
+        Tetromino r = bag.remove(new Random().nextInt(bag.size()));
+        return r;
     }
 
     public ArrayList<Tetromino> createBag() {

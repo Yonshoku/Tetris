@@ -9,8 +9,8 @@ import java.awt.event.*;
 public class KeyboardControl implements KeyListener{
     private Tetris tetris;
 
-    private long beforeAutoshiftDelay = 1000L;
-    private long autoshiftPeriod = 200L;
+    private long beforeAutoshiftDelay = 150L;
+    private long autoshiftPeriod = 60L;
     private Timer leftAutoshiftTimer, downAutoshiftTimer, rightAutoshiftTimer;
     private String leftAutoshiftTimerState = "stopped";
     private String rightAutoshiftTimerState = "stopped";
@@ -39,6 +39,9 @@ public class KeyboardControl implements KeyListener{
         controlMap.put(KeyEvent.VK_UP, "rotateClockwise");
         controlMap.put(KeyEvent.VK_Z, "rotateCounterClockwise");
         controlMap.put(KeyEvent.VK_CONTROL, "rotateCounterClockwise");
+
+        // Others
+        controlMap.put(KeyEvent.VK_SPACE, "harddrop");
     }
 
     @Override 
@@ -51,18 +54,12 @@ public class KeyboardControl implements KeyListener{
         if (action.equals("moveLeft")) {
             // Resume right shift if it was paused
             if (rightAutoshiftTimerState.equals("paused")) {
-                rightAutoshiftTimer = continueAutoshift(new TimerTask() {
-                    public void run() {
-                        tetris.move(Direction.RIGHT);
-                        tetris.processMove(Direction.RIGHT);
-                    }
-                });
-
+                rightAutoshiftTimer = startAutoshiftTimer(Direction.RIGHT, 0);
                 rightAutoshiftTimerState = "running";
             }
 
             // Stop this autoshift
-            leftAutoshiftTimer = stopAutoshift(leftAutoshiftTimer);
+            leftAutoshiftTimer = stopAutoshiftTimer(leftAutoshiftTimer);
             leftAutoshiftTimerState = "stopped";
         }
 
@@ -70,25 +67,21 @@ public class KeyboardControl implements KeyListener{
         if (action.equals("moveRight")) {
             // Resume left shift if it was paused
             if (leftAutoshiftTimerState.equals("paused")) {
-                leftAutoshiftTimer = continueAutoshift(new TimerTask() {
-                    public void run() {
-                        tetris.move(Direction.LEFT);
-                        tetris.processMove(Direction.LEFT);
-                    }
-                });
-
+                leftAutoshiftTimer = startAutoshiftTimer(Direction.LEFT, 0);
                 leftAutoshiftTimerState = "running";
             }
 
             // Stop this autoshift
-            rightAutoshiftTimer = stopAutoshift(rightAutoshiftTimer);
+            rightAutoshiftTimer = stopAutoshiftTimer(rightAutoshiftTimer);
             rightAutoshiftTimerState = "stopped";
         }
 
         // Moving down was stopped
         if (action.equals("moveDown")) {
-            downAutoshiftTimer = stopAutoshift(downAutoshiftTimer);
+            downAutoshiftTimer = stopAutoshiftTimer(downAutoshiftTimer);
             downAutoshiftTimerState = "stopped";
+
+            tetris.setNoFall(false);
         }
     }
 
@@ -106,18 +99,12 @@ public class KeyboardControl implements KeyListener{
                 tetris.move(Direction.LEFT);
                 tetris.processMove(Direction.LEFT);
 
-                leftAutoshiftTimer = startAutoshift(new TimerTask() {
-                    public void run() {
-                        tetris.move(Direction.LEFT);
-                        tetris.processMove(Direction.LEFT);
-                    }
-                }); 
-
+                leftAutoshiftTimer = startAutoshiftTimer(Direction.LEFT, beforeAutoshiftDelay); 
                 leftAutoshiftTimerState = "running";
 
                 // Stop right autoshift while there is left shift
                 if (rightAutoshiftTimerState.equals("running")) {
-                    stopAutoshift(rightAutoshiftTimer);
+                    stopAutoshiftTimer(rightAutoshiftTimer);
                     rightAutoshiftTimerState = "paused";
                 }
             }
@@ -129,19 +116,13 @@ public class KeyboardControl implements KeyListener{
                 tetris.move(Direction.RIGHT);
                 tetris.processMove(Direction.RIGHT);
 
-                rightAutoshiftTimer = startAutoshift(new TimerTask() {
-                    public void run() {
-                        tetris.move(Direction.RIGHT);
-                        tetris.processMove(Direction.RIGHT);
-                    }
-                });
-
+                rightAutoshiftTimer = startAutoshiftTimer(Direction.RIGHT, beforeAutoshiftDelay);
                 rightAutoshiftTimerState = "running";
 
                 // Stop left autoshift while there is right shift
                 // It will be resumed as soon as right shift will be done
                 if (leftAutoshiftTimerState.equals("running")) { 
-                    stopAutoshift(leftAutoshiftTimer);
+                    stopAutoshiftTimer(leftAutoshiftTimer);
                     leftAutoshiftTimerState = "paused";
                 }
             }
@@ -152,15 +133,9 @@ public class KeyboardControl implements KeyListener{
             if (downAutoshiftTimerState.equals("stopped")) {
                 tetris.move(Direction.DOWN);
                 tetris.processMove(Direction.DOWN);
+                tetris.setNoFall(true);
 
-
-                downAutoshiftTimer = startAutoshift(new TimerTask() {
-                    public void run() {
-                        tetris.move(Direction.DOWN);
-                        tetris.processMove(Direction.DOWN);
-                    }
-                });
-
+                downAutoshiftTimer = startAutoshiftTimer(Direction.DOWN, beforeAutoshiftDelay);
                 downAutoshiftTimerState = "running";
             }
         }
@@ -174,21 +149,27 @@ public class KeyboardControl implements KeyListener{
         if (controlMap.get(e.getKeyCode()).equals("rotateCounterClockwise")) {
             tetris.rotate(Direction.COUNTERCLOCKWISE);
         }
+
+        // Harddrop 
+        if (controlMap.get(e.getKeyCode()).equals("harddrop")){
+            tetris.harddrop();
+        }
     };
 
-    Timer startAutoshift(TimerTask task) {
+    Timer startAutoshiftTimer(final Direction dir, long beforeAutoshiftDelay) {
         Timer timer = new Timer();
-        timer.scheduleAtFixedRate(task, beforeAutoshiftDelay, autoshiftPeriod);
+
+        timer.scheduleAtFixedRate(new TimerTask() {
+            public void run() {
+                tetris.move(dir);
+                tetris.processMove(dir);
+            }
+        }, beforeAutoshiftDelay, autoshiftPeriod);
+
         return timer;
     }
 
-    Timer continueAutoshift(TimerTask task) {
-        Timer timer = new Timer();
-        timer.scheduleAtFixedRate(task, 0, autoshiftPeriod);
-        return timer;
-    }
-
-    Timer stopAutoshift(Timer timer) {
+    Timer stopAutoshiftTimer(Timer timer) {
         if (timer != null) {
             timer.cancel();
             timer.purge();

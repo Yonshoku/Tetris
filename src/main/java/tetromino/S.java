@@ -14,7 +14,7 @@ public class S extends Tetromino{
         });
 
         setX((field.getCols() / 2) - 2);
-        setY(field.getHiddenRows() >= 23 ? 22 : field.getHiddenRows() - 1);
+        setY(field.getHiddenRows() >= 24 ? 24 : field.getHiddenRows() - 1);
     }
 
 }
