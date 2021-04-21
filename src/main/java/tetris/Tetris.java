@@ -1,12 +1,3 @@
-// change background
-// change colors
-// print level
-// draw 2 next tetrominos
-// finish up scoring
-// music
-// fix gameOver
-// sounds <16-04-21, yourname> //
-
 package tetris;
 
 import java.util.Timer;
@@ -161,6 +152,7 @@ public class Tetris {
     }
 
     void score() {
+        // Score cleared lines
         int linesToClear = getLinesToClearNum();
         
         if (linesToClear == 1) {
@@ -177,6 +169,7 @@ public class Tetris {
             score += level * 1200;
         }
 
+        // Level up
         if (clearedLinesValues >= levelUpGoal) {
             level += 1;
             levelUpGoal = level * 5;
@@ -184,6 +177,7 @@ public class Tetris {
         }
 
         SidePanel.setScore(score);
+        SidePanel.setLevel(level);
         gameSpeed = (long) (Math.pow(0.8 - ((level - 1) * 0.007), level - 1) * 1000);
     }
 
